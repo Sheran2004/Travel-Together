@@ -1,0 +1,21 @@
+export const inr = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
+export const fmtDate = (d, o = { day: 'numeric', month: 'short' }) => (d ? new Date(d).toLocaleDateString('en-IN', o) : '');
+export const fmtDateFull = (d) => fmtDate(d, { day: 'numeric', month: 'short', year: 'numeric' });
+export const dateRange = (a, b) => `${fmtDate(a)} – ${fmtDate(b, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+export const duration = (a, b) => Math.max(1, Math.round((new Date(b) - new Date(a)) / 864e5) + 1);
+export const fmtTime = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+export const timeAgo = (d) => {
+  const s = Math.floor((Date.now() - new Date(d)) / 1000);
+  if (s < 60) return 'just now'; if (s < 3600) return `${Math.floor(s / 60)}m ago`; if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 604800) return `${Math.floor(s / 86400)}d ago`; return fmtDate(d, { day: 'numeric', month: 'short' });
+};
+export const chatStamp = (d) => { const dt = new Date(d), now = new Date(); return dt.toDateString() === now.toDateString() ? fmtTime(dt) : `${fmtDate(dt)}`; };
+export const daysUntil = (d) => Math.ceil((new Date(d) - new Date()) / 864e5);
+export const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
+export const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+export const toInputDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+export const CATEGORIES = ['Beach', 'Mountains', 'Trekking', 'Adventure', 'Backpacking', 'Road Trip', 'Weekend', 'Cultural', 'Nature', 'International'];
+export const STYLES = ['Backpacker', 'Budget', 'Luxury', 'Adventure', 'Nature', 'Photography', 'Cultural', 'Food', 'Road trip', 'Trekking'];
+export const INTERESTS = ['Trekking', 'Camping', 'Beaches', 'Photography', 'Food', 'Culture', 'Road trips', 'Yoga', 'Wildlife', 'Rafting', 'Heritage', 'Nightlife'];
+export const TRANSPORT = ['none', 'flight', 'train', 'bus', 'car', 'bike', 'walking'];
+export const shareUrl = (path) => `${window.location.origin}${path}`;

@@ -1,0 +1,21 @@
+import { ShieldCheck, Phone, Users, MapPin, Flag, Share2, Siren } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+
+const NUMBERS = [['All-in-one emergency', '112'], ['Police', '100'], ['Ambulance', '108'], ['Fire', '101'], ['Women helpline', '1091'], ['Tourist helpline (India)', '1363']];
+const TIPS = ['Chat and call inside the app first. Move to other channels only when you are comfortable.', 'Meet in a public place before committing to a trip together.', 'Share the itinerary and group details with someone you trust.', 'Keep valuables and ID copies safe and pay shared costs transparently through the expense tracker.', 'Trust your instincts. Leave any situation that feels wrong and report it.'];
+export default function Safety() {
+  const { user } = useAuth(); const toast = useToast();
+  const shareTrip = async () => { const text = 'I am travelling with Travel Together. Check my trips: ' + window.location.origin + (user ? `/travelers/${user.username}` : ''); try { if (navigator.share) await navigator.share({ title: 'My trip details', text }); else { await navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); } } catch { /* cancelled */ } };
+  return (
+    <div className="container-x max-w-4xl space-y-8 py-8"><div><h1 className="flex items-center gap-2 text-3xl font-extrabold"><ShieldCheck className="h-8 w-8 text-brand" />Safety center</h1><p className="mt-1 text-muted">Travelling with new people is great when it's safe. Use these tools and guidelines.</p></div>
+      <section className="card border-danger/40 p-5"><h2 className="mb-1 flex items-center gap-2 text-lg font-bold text-danger"><Siren className="h-5 w-5" />Emergency</h2><p className="mb-4 text-sm text-muted">Travel Together never contacts emergency services for you. Tap a number to call from your phone.</p>
+        <div className="grid gap-3 sm:grid-cols-3">{NUMBERS.map(([l, n]) => <a key={n} href={`tel:${n}`} className="flex items-center justify-between rounded-xl bg-raised px-4 py-3 hover:bg-danger/10"><span className="text-sm">{l}</span><b className="flex items-center gap-1 text-lg"><Phone className="h-4 w-4" />{n}</b></a>)}</div>
+        <p className="mt-3 text-xs text-muted">Numbers shown are for India. Check local numbers when travelling abroad.</p></section>
+      {user && <section className="card p-5"><h2 className="mb-2 font-bold">Your emergency contact</h2>{user.emergencyContact?.phone ? <div className="flex flex-wrap items-center justify-between gap-3"><p>{user.emergencyContact.name} · {user.emergencyContact.phone}</p><a href={`tel:${user.emergencyContact.phone}`} className="btn-primary btn-sm"><Phone className="h-4 w-4" />Call</a></div> : <p className="text-sm text-muted">Not set yet. <Link to="/settings" className="text-brand underline">Add one in Settings</Link>. It stays private.</p>}<button className="btn-ghost btn-sm mt-3" onClick={shareTrip}><Share2 className="h-4 w-4" />Share my trip information</button></section>}
+      <section id="guidelines" className="card p-5"><h2 className="mb-3 font-bold">Safety guidelines</h2><ul className="list-disc space-y-2 pl-5 text-sm text-muted">{TIPS.map((t) => <li key={t}>{t}</li>)}</ul></section>
+      <section className="card p-5"><h2 className="mb-3 font-bold">Community guidelines</h2><ul className="list-disc space-y-2 pl-5 text-sm text-muted"><li>Be respectful. No harassment, hate speech or discrimination.</li><li>Be honest about who you are and what a trip costs. No scams or fake profiles.</li><li>Do not share other people's private information.</li><li>Organizers must keep itineraries accurate and act fairly on join requests.</li><li>Breaking these rules can lead to suspension.</li></ul></section>
+      <section className="grid gap-4 sm:grid-cols-3">{[[Flag, 'Report', 'Use Report on any profile, trip or message.'], [Users, 'Block & restrict', 'From a chat menu or profile.'], [MapPin, 'Location privacy', 'We never show anyone your exact location.']].map(([I, t, d]) => <div key={t} className="card p-4"><I className="mb-2 h-5 w-5 text-brand" /><b>{t}</b><p className="text-sm text-muted">{d}</p></div>)}</section></div>
+  );
+}

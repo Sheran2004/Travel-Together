@@ -28,4 +28,7 @@ const t0 = 1_700_000_000_000; ice = buildIceServers({ TURN_URL: 'turn:a:3478', T
 assert.equal(tu.username, `${Math.floor(t0 / 1000) + 21600}:u1`);
 assert.equal(tu.credential, (await import('node:crypto')).createHmac('sha1', 's3cret').update(tu.username).digest('base64'));
 ice = buildIceServers({ TURN_URLS: 'turn:a:3478' }, 'u1'); assert.equal(ice.turn, false, 'TURN urls without credentials are ignored');
+const { parseFrom } = await import('../utils/helpers.js');
+assert.deepEqual(parseFrom('Travel Together <no-reply@x.com>'), { name: 'Travel Together', email: 'no-reply@x.com' });
+assert.deepEqual(parseFrom('plain@x.com'), { name: 'Travel Together', email: 'plain@x.com' });
 console.log('logic tests passed');

@@ -11,3 +11,9 @@ export const paginate = (q, def = 12) => {
   const limit = Math.min(50, Math.max(1, parseInt(q.limit) || def));
   return { page, limit, skip: (page - 1) * limit };
 };
+
+/** 'Travel Together <no-reply@x.com>' -> { name, email } */
+export const parseFrom = (s) => {
+  const m = /^(.*?)\s*<(.+?)>$/.exec(String(s || '').trim());
+  return m ? { name: m[1].replace(/^"|"$/g, '').trim() || 'Travel Together', email: m[2].trim() } : { name: 'Travel Together', email: String(s || '').trim() };
+};

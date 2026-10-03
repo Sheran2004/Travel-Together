@@ -61,6 +61,9 @@ Per package: `cd server && npm install && npm run dev | npm start | npm run seed
 | `CLIENT_URL` | yes in prod | allowed CORS origin(s), comma separated |
 | `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` | prod | image, voice and file storage. Without them uploads are written to `server/uploads` (not durable on most hosts) |
 | `CONTACT_EMAIL` | yes | your email, sent to OpenStreetMap geocoding as required by their usage policy |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional | background push. Generate once: `cd server && npx web-push generate-vapid-keys` |
+| `TURN_URLS` + `TURN_SECRET` (or `TURN_USERNAME`/`TURN_CREDENTIAL`) | optional | TURN relay so calls connect on strict networks |
+| `BREVO_API_KEY` | prod | send email over HTTPS (works where SMTP is blocked) |
 | `SMTP_URL`, `MAIL_FROM` | optional | password-reset email. Without SMTP the reset link is **printed to the server console** |
 | `TURN_URL/USERNAME/CREDENTIAL` | optional | TURN relay for calls across strict NATs (STUN only by default) |
 
@@ -77,7 +80,7 @@ Other seeded users use password `Travel@123`. **Delete or change these before an
 ## Features implemented
 Auth (register/login/logout, JWT, bcrypt, forgot/reset password, email verification, logout-all-sessions, protected routes + server-side role checks) · profiles with completion %, privacy and notification settings · landing, dashboard (rule-based recommendations, upcoming, popular, travelers, saved, messages, notifications) · Explore with backend search/filters/sort/pagination, list + map views, clustering, "near me" via browser geolocation (asked only on click, approximate, never stored) · trip create/edit/cancel/delete, location picker with real Nominatim geocoding and reverse-geocoding on map click · open-join and request-to-join flows, leave, remove member, atomic capacity checks · itinerary builder and timeline, numbered itinerary map with real OSRM routes · private chat and group chat over Socket.IO (receipts, typing, presence, replies, reactions, pinning, delete, search, images, files, emoji, voice notes with waveform) · WebRTC voice and video calls with call history · connections, travel network, trip invitations from chat · traveler discovery with transparent compatibility scores · notifications center · favorites · reviews (only after a trip ends, one per user) · shared checklist · expense splitting with settle-up suggestions · live weather · destination pages · block, restrict, report, safety center · admin dashboard (stats, users, suspend, trips, reports, activity) · light/dark/system theme saved per account · responsive layout with mobile bottom nav and FAB.
 
-Also included: global search (trips and travelers), trip ownership transfer, admin-managed trip categories, members-only trip photo gallery, private per-member trip notes (hotel, transport, emergency contacts; visible only to the author), "show past trips" filter, and desktop alerts while the site is open in a background tab.
+Also included: email change with password check and confirmation link, background push notifications (Web Push + service worker, works with the tab closed on HTTPS/localhost), TURN support with short-lived credentials, global search (trips and travelers), trip ownership transfer, admin-managed trip categories, members-only trip photo gallery, private per-member trip notes (hotel, transport, emergency contacts; visible only to the author), "show past trips" filter, and desktop alerts while the site is open in a background tab.
 
 ## API overview
 `/api/auth` register, login, me, logout, forgot-password, reset-password · `/api/users` profile, password, search, favorites, blocked, :id/block|restrict, by-username/:u, :id · `/api/trips` list (search/filters/`lat,lng,radius`/`all=true`), recommended, popular, mine, CRUD, `:id/join|leave|request|members|favorite|reviews|checklist|expenses|invite|cancel`, `:id/requests/:reqId/accept|reject` · `/api/conversations` list, private/:userId, :id, :id/messages, :id/read · `/api/messages/:id` delete, react, pin · `/api/uploads/:kind` (image|voice|file) · `/api/connections` · `/api/invitations/:id/accept|decline` · `/api/notifications` · `/api/reports` · `/api/calls` · `/api/geo/search|reverse|route` · `/api/weather` · `/api/destinations` · `/api/admin/*`.
@@ -85,11 +88,19 @@ Errors always look like `{ "success": false, "message": "…" }` (with `errors` 
 
 Socket events: `message:send|receive|read|delete|update|delivered`, `typing:start|stop|update`, `user:online|offline`, `call:offer|incoming|answer|answered|reject|end|ended|ice-candidate`, `notification:new`. The socket identity is taken from the verified JWT, never from client input.
 
-## Deployment
-* **Database:** MongoDB Atlas.
-* **Backend (Render/Railway/Fly):** root `server`, build `npm install`, start `npm start`; set the env vars above, `NODE_ENV=production`, `CLIENT_URL=https://your-frontend`, `SERVER_URL=https://your-api`. Use a host that supports WebSockets. Configure Cloudinary (local disk is ephemeral).
-* **Frontend (Vercel):** import the repo (`vercel.json` is included), set `VITE_API_URL=https://your-api`.
-* **Calls:** WebRTC requires HTTPS in production. Add a TURN server for reliability on mobile/corporate networks.
+## Push and TURN setup
+* **Push:** generate VAPID keys (command above), put them in `server/.env`, restart, then Settings → Notifications → *Enable push* → *Send test*. Browsers require HTTPS (localhost is allowed). Push is skipped while you have the site open and online, because the in-tab alert already shows it.
+* **TURN:** calls use free Google STUN by default, which works on most home networks. Add a TURN server for mobile data/office networks: either a hosted provider (set `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL`) or your own coturn with `use-auth-secret` and the same value in `TURN_SECRET` (the API then issues 6-hour credentials per call via `/api/calls/ice`).
+
+## Deployment (recommended: one Render service + Atlas + Cloudinary + Brevo)
+Express serves the built React app, the API and Socket.IO from a single URL, so there is no CORS setup and no `VITE_API_URL`.
+1. **Atlas:** use a separate database name for production (e.g. `.../travel-together-prod`) so demo data stays out. Network Access must allow `0.0.0.0/0` (Render has no fixed IP).
+2. **Render:** New → Blueprint → select this repo (`render.yaml`), or create a Web Service with build `npm install --prefix server && npm install --include=dev --prefix client && npm run build --prefix client`, start `npm start --prefix server`, health check `/api/health`.
+3. **Environment variables:** `NODE_ENV=production`, `NODE_VERSION=22`, `MONGO_URI`, `JWT_SECRET`, `CONTACT_EMAIL`, and after the first deploy `CLIENT_URL` and `SERVER_URL` = your `https://<name>.onrender.com` (then redeploy). Add Cloudinary (`CLOUDINARY_*`), `BREVO_API_KEY` + `MAIL_FROM`, optional `VAPID_*` and `TURN_*`.
+4. **First admin:** register on the live site, then in Atlas (Browse Collections → `users`) set that user's `role` to `admin`, or run locally against the production URI: `npm run make-admin -- you@example.com`.
+5. **Free plan caveats:** the service sleeps after about 15 minutes idle (first request is slow, sockets reconnect), and outbound SMTP is blocked, which is why email uses the Brevo HTTPS API. Local-disk uploads vanish on restart, so Cloudinary is required.
+6. **Alternative split deploy:** frontend on Vercel (`vercel.json`, `VITE_API_URL=https://your-api`) and backend on any Node host with WebSocket support; set `CLIENT_URL` to the Vercel URL.
+* **Calls:** WebRTC requires HTTPS (Render provides it). Add TURN for mobile or office networks.
 
 ## Testing status (please read)
 This project was built in a sandbox **without a MongoDB server or two-browser access**, so these were verified:
@@ -99,4 +110,4 @@ This project was built in a sandbox **without a MongoDB server or two-browser ac
 **Not yet verified end-to-end. Run this checklist on your machine after seeding:** register → login → dashboard → search/filter → open trip → join (check `tripmembers` in MongoDB) → group chat → create trip with "Manali" (check `latitude/longitude` saved) → edit, save, leave → profile update → logout/login → request-to-join accept/reject → two browsers: private chat, typing, read receipts, voice note, voice call accept/decline/mute/end, video call → block then message (must fail) → report → admin login, suspend, resolve report → full trip shows "Trip Full" → map zoom/pan/cluster/popups, geolocation allow and deny, invalid location search → phone-width layout. Expect to fix small integration bugs the first time; none of the live-database, Socket.IO, WebRTC, Nominatim/OSRM, Cloudinary or deployment paths have been exercised here.
 
 ## Known gaps
-Email change, multi-device call ringing, true background push notifications (only in-tab desktop alerts), live location sharing (skipped on purpose for privacy), and SSR/pre-rendered SEO (meta tags are set client-side) are not implemented. Verification and password-reset emails are only delivered once `SMTP_URL` is set; otherwise links print in the server console. Privacy/Terms/About pages are placeholder templates. OSM tile/Nominatim/OSRM public servers have usage policies; use a commercial provider for production traffic.
+Multi-device call ringing, live location sharing (skipped on purpose for privacy), and SSR/pre-rendered SEO (meta tags are set client-side) are not implemented. Verification and password-reset emails are only delivered once `SMTP_URL` is set; otherwise links print in the server console. Privacy/Terms/About pages are placeholder templates. OSM tile/Nominatim/OSRM public servers have usage policies; use a commercial provider for production traffic.

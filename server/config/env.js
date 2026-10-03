@@ -10,7 +10,7 @@ export const env = {
   SERVER_URL: process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`,
   CLOUDINARY: process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
     ? { cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET } : null,
-  SMTP_URL: process.env.SMTP_URL || '',
+  SMTP_URL: process.env.SMTP_URL || '', BREVO_API_KEY: process.env.BREVO_API_KEY || '',
   MAIL_FROM: process.env.MAIL_FROM || 'Travel Together <no-reply@traveltogether.app>',
   TURN_URL: process.env.TURN_URL || '', TURN_URLS: process.env.TURN_URLS || '', TURN_SECRET: process.env.TURN_SECRET || '',
   VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '', VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',

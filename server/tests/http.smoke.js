@@ -35,6 +35,14 @@ let [s, j] = await call('POST', '/api/auth/register', { name: 'A', email: 'bad',
 [s] = await call('GET', '/api/calls/ice'); assert.equal(s, 401);
 [s] = await call('POST', '/api/auth/confirm-email-change', { token: 'x' }); assert.equal(s, 400);
 [s, j] = await call('GET', '/api/nope'); assert.equal(s, 404);
+// CSP must allow what the SPA needs, without inline scripts
+const helmet = (await import('helmet')).default; const { helmetConfig } = await import('../middleware/security.js');
+const a2 = express(); a2.use(helmet(helmetConfig)); a2.get('/', (_q, r) => r.send('ok')); const s2 = a2.listen(0);
+const csp = (await fetch(`http://127.0.0.1:${s2.address().port}/`)).headers.get('content-security-policy');
+assert(csp.includes("script-src 'self'") && !csp.includes("script-src 'self' 'unsafe-inline'"), csp);
+assert(csp.includes('img-src') && csp.includes('https:') && csp.includes('fonts.gstatic.com') && csp.includes('worker-src'), csp);
+assert(!csp.includes('upgrade-insecure-requests'), 'must not force https on localhost');
+s2.close();
 srv.close();
 
 // Schema-level validation of a full trip document & user

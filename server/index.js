@@ -9,7 +9,8 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
-import { sanitize } from './middleware/security.js';
+import { sanitize, helmetConfig } from './middleware/security.js';
+import { mailMode } from './services/mail.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import { uploadsDir } from './services/storage.js';
 import authRoutes from './routes/auth.js';
@@ -26,7 +27,7 @@ import { ensureCategories } from './services/categories.js';
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet(helmetConfig));
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 if (env.NODE_ENV !== 'test') app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '1mb' }));
@@ -55,7 +56,10 @@ app.use('/api', notFound);
 
 // Optional: serve the built client from the same server (single-host deployment)
 const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'client', 'dist');
-if (fs.existsSync(dist)) { app.use(express.static(dist)); app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html'))); }
+if (fs.existsSync(dist)) {
+  app.use(express.static(dist, { setHeaders: (res, p) => { if (p.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache'); else if (p.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } }));
+  app.get('*', (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(dist, 'index.html')); });
+}
 
 app.use(errorHandler);
 
@@ -66,4 +70,10 @@ await connectDB();
 await ensureCategories();
 const markCompleted = () => Trip.updateMany({ status: 'active', endDate: { $lt: new Date() } }, { status: 'completed' }).catch(e => console.error('completion job', e.message));
 await markCompleted(); setInterval(markCompleted, 60 * 60 * 1000);
-server.listen(env.PORT, () => console.log(`Travel Together API on ${env.SERVER_URL} (${env.NODE_ENV})`));
+server.listen(env.PORT, () => {
+  console.log(`Travel Together API on ${env.SERVER_URL} (${env.NODE_ENV}) | mail: ${mailMode}`);
+  if (env.NODE_ENV === 'production') {
+    if (!env.CLOUDINARY) console.warn('WARNING: Cloudinary is not configured. Uploaded photos/voice notes are stored on local disk and will be LOST on restart.');
+    if (mailMode === 'console') console.warn('WARNING: no email provider configured (BREVO_API_KEY or SMTP_URL). Verification and reset emails will only be logged.');
+  }
+});

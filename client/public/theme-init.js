@@ -1,0 +1,2 @@
+// applies the saved theme before first paint (external file so a strict CSP can block inline scripts)
+(function () { try { var t = localStorage.getItem('tt_theme') || 'system'; var d = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.dataset.theme = d ? 'dark' : 'light'; } catch (e) {} })();

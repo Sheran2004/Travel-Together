@@ -12,5 +12,7 @@ export const env = {
     ? { cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET } : null,
   SMTP_URL: process.env.SMTP_URL || '',
   MAIL_FROM: process.env.MAIL_FROM || 'Travel Together <no-reply@traveltogether.app>',
-  TURN_URL: process.env.TURN_URL || '', TURN_USERNAME: process.env.TURN_USERNAME || '', TURN_CREDENTIAL: process.env.TURN_CREDENTIAL || ''
+  TURN_URL: process.env.TURN_URL || '', TURN_URLS: process.env.TURN_URLS || '', TURN_SECRET: process.env.TURN_SECRET || '',
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '', VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT || `mailto:${process.env.CONTACT_EMAIL || 'admin@example.com'}`, TURN_USERNAME: process.env.TURN_USERNAME || '', TURN_CREDENTIAL: process.env.TURN_CREDENTIAL || ''
 };

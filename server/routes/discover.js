@@ -109,7 +109,6 @@ r.get('/categories', wrap(async (_req, res) => {
 /* Client bootstrap config */
 r.get('/meta', (_req, res) => {
   const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
-  if (env.TURN_URL) iceServers.push({ urls: env.TURN_URL, username: env.TURN_USERNAME, credential: env.TURN_CREDENTIAL });
   res.json({ success: true, iceServers, uploads: env.CLOUDINARY ? 'cloudinary' : 'local' });
 });
 export default r;

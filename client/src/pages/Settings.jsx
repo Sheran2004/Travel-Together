@@ -7,10 +7,44 @@ import { useFetch } from '../hooks/useFetch';
 import { Field, Spinner, Modal, Avatar, Async } from '../components/ui';
 import { ThemeToggle } from '../components/Navbar';
 import { fmtDateFull } from '../utils/format';
+import { usePush } from '../hooks/usePush';
 
 const Section = ({ title, children }) => <section className="card space-y-4 p-5 sm:p-6"><h2 className="text-lg font-bold">{title}</h2>{children}</section>;
 const Toggle = ({ label, checked, onChange }) => <label className="flex items-center justify-between gap-4 py-1.5 text-sm"><span>{label}</span><input type="checkbox" role="switch" checked={!!checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-9 cursor-pointer appearance-none rounded-full bg-line transition checked:bg-brand relative before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition checked:before:translate-x-4" /></label>;
 
+function EmailChange() {
+  const { user, setUser } = useAuth(); const toast = useToast(); const [open, setOpen] = useState(false); const [f, setF] = useState({ newEmail: '', password: '' }); const [busy, setBusy] = useState(false);
+  const submit = async () => { setBusy(true); try { const r = await api.post('/users/email-change', f); setUser(r.data.user); toast.success(r.data.message); setOpen(false); setF({ newEmail: '', password: '' }); } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); } };
+  const cancel = async () => { try { await api.delete('/users/email-change'); setUser((await api.get('/auth/me')).data.user); } catch (e) { toast.error(errMsg(e)); } };
+  return (
+    <div className="space-y-2">
+      <Field label="Email" htmlFor="s-e"><input id="s-e" className="input" value={user.email} disabled /></Field>
+      {user.pendingEmail && <p className="rounded-lg bg-accent/20 p-2.5 text-sm">Waiting for you to confirm <b>{user.pendingEmail}</b>. Open the link sent to that inbox. <button className="underline" onClick={cancel}>Cancel change</button></p>}
+      {open ? <div className="space-y-3 rounded-xl border border-line p-3">
+        <Field label="New email" htmlFor="s-ne"><input id="s-ne" type="email" className="input" value={f.newEmail} onChange={(e) => setF({ ...f, newEmail: e.target.value })} /></Field>
+        <Field label="Current password" htmlFor="s-ep" hint="We ask for it to make sure it's really you."><input id="s-ep" type="password" className="input" autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+        <div className="flex gap-2"><button className="btn-primary btn-sm" disabled={busy || !f.newEmail || !f.password} onClick={submit}>{busy && <Spinner className="h-4 w-4" />}Send confirmation</button><button className="btn-ghost btn-sm" onClick={() => setOpen(false)}>Cancel</button></div></div>
+        : <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>Change email</button>}
+    </div>
+  );
+}
+function PushSettings() {
+  const p = usePush(); const toast = useToast(); const [busy, setBusy] = useState(false);
+  if (!p.supported) return <p className="text-xs text-muted">Background push is not supported in this browser.</p>;
+  if (p.loading) return null;
+  if (!p.configured) return <p className="text-xs text-muted">Background push is not set up on this server yet (the site owner must add VAPID keys).</p>;
+  const run = async (fn, ok) => { setBusy(true); try { await fn(); toast.success(ok); } catch (e) { toast.error(e.response ? errMsg(e) : e.message); } finally { setBusy(false); } };
+  return (
+    <div className="space-y-2 rounded-xl bg-raised p-3 text-sm">
+      <p>Background push: get alerts even when this tab is closed {p.subscribed ? '(on for this device)' : ''}</p>
+      <div className="flex flex-wrap gap-2">
+        {!p.subscribed ? <button className="btn-primary btn-sm" disabled={busy || p.permission === 'denied'} onClick={() => run(p.enable, 'Push enabled on this device')}>Enable push</button>
+          : <><button className="btn-ghost btn-sm" disabled={busy} onClick={() => run(p.test, 'Test sent. It should appear in a moment')}>Send test</button><button className="btn-ghost btn-sm" disabled={busy} onClick={() => run(p.disable, 'Push disabled')}>Disable</button></>}
+      </div>
+      {p.permission === 'denied' && <p className="text-xs text-danger">Notifications are blocked for this site in your browser settings.</p>}
+    </div>
+  );
+}
 function DesktopNotif() {
   const supported = typeof window !== 'undefined' && 'Notification' in window; const [perm, setPerm] = useState(supported ? Notification.permission : 'unsupported');
   if (!supported) return <p className="text-xs text-muted">Desktop notifications are not supported in this browser.</p>;
@@ -34,12 +68,12 @@ export default function Settings() {
   return (
     <div className="container-x max-w-3xl space-y-6 py-8"><h1 className="text-3xl font-extrabold">Settings</h1>
       <Section title="Account"><div className="grid gap-4 sm:grid-cols-2"><Field label="Name" htmlFor="s-n"><input id="s-n" className="input" value={acct.name} onChange={(e) => setAcct({ ...acct, name: e.target.value })} /></Field><Field label="Username" htmlFor="s-u"><input id="s-u" className="input" value={acct.username} onChange={(e) => setAcct({ ...acct, username: e.target.value })} /></Field></div>
-        <Field label="Email" hint="Email changes are not supported yet."><input className="input" value={user.email} disabled /></Field><button className="btn-primary btn-sm" onClick={() => save(acct, 'Account updated')}>Save account</button></Section>
+        <EmailChange /><button className="btn-primary btn-sm" onClick={() => save(acct, 'Account updated')}>Save account</button></Section>
       <Section title="Privacy">
         <Field label="Who can message me" htmlFor="wm"><select id="wm" className="input" value={priv.whoCanMessage} onChange={(e) => save({ privacySettings: { whoCanMessage: e.target.value } })}><option value="everyone">Everyone</option><option value="connections">Connections only</option><option value="shared-trips">People on shared trips</option><option value="nobody">Nobody</option></select></Field>
         <Field label="Profile visibility" htmlFor="pv"><select id="pv" className="input" value={priv.profileVisibility} onChange={(e) => save({ privacySettings: { profileVisibility: e.target.value } })}><option value="public">Public</option><option value="members">Logged-in travelers only</option><option value="private">Private (name and photo only)</option></select></Field>
         <Toggle label="Show my online status" checked={priv.showOnlineStatus} onChange={(v) => save({ privacySettings: { showOnlineStatus: v } })} /><Toggle label="Show my last seen" checked={priv.showLastSeen} onChange={(v) => save({ privacySettings: { showLastSeen: v } })} /></Section>
-      <Section title="Notifications"><DesktopNotif />{[['messages', 'Messages'], ['calls', 'Calls'], ['tripUpdates', 'Trip updates'], ['invitations', 'Invitations & requests'], ['marketing', 'Marketing']].map(([k, l]) => <Toggle key={k} label={l} checked={notif[k]} onChange={(v) => save({ notificationSettings: { [k]: v } })} />)}</Section>
+      <Section title="Notifications"><DesktopNotif /><PushSettings />{[['messages', 'Messages'], ['calls', 'Calls'], ['tripUpdates', 'Trip updates'], ['invitations', 'Invitations & requests'], ['marketing', 'Marketing']].map(([k, l]) => <Toggle key={k} label={l} checked={notif[k]} onChange={(v) => save({ notificationSettings: { [k]: v } })} />)}</Section>
       <Section title="Appearance"><ThemeToggle /><p className="text-xs text-muted">Saved to your account and applied on every device.</p></Section>
       <Section title="Emergency contact"><p className="text-sm text-muted">Stays private. Only you see it, and it is never contacted automatically.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Name" htmlFor="ecn"><input id="ecn" className="input" value={ec.name || ''} onChange={(e) => setEc({ ...ec, name: e.target.value })} /></Field><Field label="Phone" htmlFor="ecp"><input id="ecp" className="input" value={ec.phone || ''} onChange={(e) => setEc({ ...ec, phone: e.target.value })} /></Field></div><button className="btn-primary btn-sm" onClick={() => save({ emergencyContact: ec }, 'Emergency contact saved')}>Save contact</button></Section>
       <Section title="Security"><div className="grid gap-4 sm:grid-cols-2"><Field label="Current password" htmlFor="cpw"><input id="cpw" type="password" className="input" autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} /></Field><Field label="New password" hint="8+ chars with upper, lower, number and symbol" htmlFor="npw"><input id="npw" type="password" className="input" autoComplete="new-password" value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} /></Field></div>

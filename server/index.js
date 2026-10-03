@@ -19,6 +19,7 @@ import chatRoutes, { messageRouter, uploads } from './routes/chat.js';
 import { connections, invitations, notifications, reports, calls } from './routes/social.js';
 import discover from './routes/discover.js';
 import admin from './routes/admin.js';
+import pushRoutes from './routes/push.js';
 import { initSocket } from './socket.js';
 import Trip from './models/Trip.js';
 import { ensureCategories } from './services/categories.js';
@@ -32,7 +33,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(sanitize);
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 1000, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Please slow down.' } }));
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, message: { success: false, message: 'Too many attempts. Try again in a few minutes.' } });
-app.use(['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/resend-verification'], authLimiter);
+app.use(['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/verify-email', '/api/auth/resend-verification', '/api/auth/confirm-email-change', '/api/users/email-change'], authLimiter);
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
 
 app.get('/api/health', (_req, res) => res.json({ success: true, status: 'ok', time: new Date() }));
@@ -48,6 +49,7 @@ app.use('/api/notifications', notifications);
 app.use('/api/reports', reports);
 app.use('/api/calls', calls);
 app.use('/api/admin', admin);
+app.use('/api/push', pushRoutes);
 app.use('/api', discover);
 app.use('/api', notFound);
 

@@ -33,7 +33,8 @@ export function CallProvider({ children }) {
     cleanup(); setCall({ state: 'ended', ...info }); setTimeout(() => setCall((c) => (c.state === 'ended' ? { state: 'idle' } : c)), 3500);
   }, [cleanup]);
 
-  const getServers = async () => { if (!iceServers.current) { try { iceServers.current = (await api.get('/meta')).data.iceServers; } catch { iceServers.current = [{ urls: 'stun:stun.l.google.com:19302' }]; } } return iceServers.current; };
+  // fetched per call: TURN credentials (when configured) are short-lived and only issued to logged-in users
+  const getServers = async () => { try { return (await api.get('/calls/ice')).data.iceServers; } catch { return [{ urls: 'stun:stun.l.google.com:19302' }]; } };
 
   const getMedia = async (video) => {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Your browser does not support calling. Try Chrome, Edge, Firefox or Safari over HTTPS.');

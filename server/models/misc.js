@@ -125,3 +125,6 @@ export const TripPhoto = mongoose.model('TripPhoto', tripPhotoSchema);
 const tripNoteSchema = new Schema({ trip: ref('Trip', { required: true }), user: ref('User', { required: true }), kind: { type: String, enum: ['hotel', 'transport', 'emergency', 'note'], default: 'note' }, title: { type: String, required: true, maxlength: 100 }, content: { type: String, maxlength: 2000, default: '' } }, { timestamps: true });
 tripNoteSchema.index({ trip: 1, user: 1 });
 export const TripNote = mongoose.model('TripNote', tripNoteSchema);
+
+const pushSubSchema = new Schema({ user: ref('User', { required: true, index: true }), endpoint: { type: String, required: true, unique: true }, keys: { p256dh: { type: String, required: true }, auth: { type: String, required: true } }, userAgent: String }, { timestamps: true });
+export const PushSubscription = mongoose.model('PushSubscription', pushSubSchema);

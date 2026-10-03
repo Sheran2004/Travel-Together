@@ -44,6 +44,9 @@ const userSchema = new Schema({
   tokenVersion: { type: Number, default: 0 },
   resetTokenHash: { type: String, select: false },
   resetTokenExpires: { type: Date, select: false },
+  pendingEmail: { type: String, lowercase: true, trim: true },
+  emailChangeHash: { type: String, select: false },
+  emailChangeExpires: { type: Date, select: false },
   verifyTokenHash: { type: String, select: false },
   verifyTokenExpires: { type: Date, select: false }
 }, { timestamps: true });
@@ -53,7 +56,7 @@ userSchema.index({ city: 1 });
 
 userSchema.methods.toJSON = function () {
   const o = this.toObject();
-  delete o.password; delete o.resetTokenHash; delete o.resetTokenExpires; delete o.verifyTokenHash; delete o.verifyTokenExpires; delete o.tokenVersion; delete o.__v;
+  delete o.password; delete o.resetTokenHash; delete o.resetTokenExpires; delete o.emailChangeHash; delete o.emailChangeExpires; delete o.verifyTokenHash; delete o.verifyTokenExpires; delete o.tokenVersion; delete o.__v;
   return o;
 };
 

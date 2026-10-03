@@ -5,10 +5,11 @@ const express = (await import('express')).default;
 const { sanitize } = await import('../middleware/security.js');
 const { errorHandler, notFound } = await import('../middleware/error.js');
 const app = express(); app.use(express.json()); app.use(sanitize);
-for (const [p, f] of [['/api/auth', 'auth'], ['/api/trips', 'trips'], ['/api/admin', 'admin'], ['/api/conversations', 'chat'], ['/api/reports', null]]) {
+for (const [p, f] of [['/api/push', 'push'], ['/api/users', 'users'], ['/api/auth', 'auth'], ['/api/trips', 'trips'], ['/api/admin', 'admin'], ['/api/conversations', 'chat'], ['/api/reports', null]]) {
   if (f) app.use(p, (await import(`../routes/${f}.js`)).default);
 }
 app.use('/api/reports', (await import('../routes/social.js')).reports);
+app.use('/api/calls', (await import('../routes/social.js')).calls);
 app.use('/api', notFound); app.use(errorHandler);
 const srv = app.listen(0); const base = `http://127.0.0.1:${srv.address().port}`;
 const call = async (m, p, body, h = {}) => { const r = await fetch(base + p, { method: m, headers: { 'content-type': 'application/json', ...h }, body: body && JSON.stringify(body) }); return [r.status, await r.json()]; };
@@ -27,6 +28,12 @@ let [s, j] = await call('POST', '/api/auth/register', { name: 'A', email: 'bad',
 [s] = await call('POST', '/api/trips/abc/photos', {}); assert.equal(s, 401);
 [s] = await call('GET', '/api/trips/abc/notes'); assert.equal(s, 401);
 [s] = await call('POST', '/api/auth/verify-email', { token: 'short' }); assert.equal(s, 400);
+[s, j] = await call('GET', '/api/push/key'); assert.equal(s, 200); assert.equal(j.enabled, false);
+[s] = await call('POST', '/api/push/subscribe', {}); assert.equal(s, 401);
+[s] = await call('POST', '/api/push/test'); assert.equal(s, 401);
+[s] = await call('POST', '/api/users/email-change', { newEmail: 'a@b.co', password: 'x' }); assert.equal(s, 401);
+[s] = await call('GET', '/api/calls/ice'); assert.equal(s, 401);
+[s] = await call('POST', '/api/auth/confirm-email-change', { token: 'x' }); assert.equal(s, 400);
 [s, j] = await call('GET', '/api/nope'); assert.equal(s, 404);
 srv.close();
 

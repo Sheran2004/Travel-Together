@@ -21,4 +21,11 @@ const part = compatibility(me, { travelStyle: ['Trekking'], travelInterests: ['F
 assert(part.score > 0 && part.score < 100 && /travel style/.test(part.explanation), part.explanation);
 const rec = tripRecommendationScore({ ...me }, { title: 'Manali Trek', category: 'Trekking', description: '', destination: 'Manali', state: '', travelStyle: 'Trekking', budget: 9000 });
 assert(rec.score >= 80);
+const { buildIceServers } = await import('../utils/turn.js');
+let ice = buildIceServers({}, 'u1'); assert.equal(ice.turn, false); assert.equal(ice.iceServers.length, 1);
+ice = buildIceServers({ TURN_URLS: 'turn:a:3478, turns:a:5349', TURN_USERNAME: 'x', TURN_CREDENTIAL: 'y' }, 'u1'); assert.equal(ice.turn, true); assert.deepEqual(ice.iceServers[1].urls, ['turn:a:3478', 'turns:a:5349']); assert.equal(ice.iceServers[1].username, 'x');
+const t0 = 1_700_000_000_000; ice = buildIceServers({ TURN_URL: 'turn:a:3478', TURN_SECRET: 's3cret' }, 'u1', t0); const tu = ice.iceServers[1];
+assert.equal(tu.username, `${Math.floor(t0 / 1000) + 21600}:u1`);
+assert.equal(tu.credential, (await import('node:crypto')).createHmac('sha1', 's3cret').update(tu.username).digest('base64'));
+ice = buildIceServers({ TURN_URLS: 'turn:a:3478' }, 'u1'); assert.equal(ice.turn, false, 'TURN urls without credentials are ignored');
 console.log('logic tests passed');

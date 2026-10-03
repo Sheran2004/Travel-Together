@@ -9,7 +9,7 @@ import { Layout } from './components/Navbar';
 import CallModal from './components/CallModal';
 import { ProtectedRoute, PageLoader } from './components/ui';
 import Home from './pages/Home';
-import { Login, Register, ForgotPassword, ResetPassword, VerifyEmail } from './pages/Auth';
+import { Login, Register, ForgotPassword, ResetPassword, VerifyEmail, ConfirmEmail } from './pages/Auth';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Explore = lazy(() => import('./pages/Explore'));
@@ -47,7 +47,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="login" element={<Login />} /><Route path="register" element={<Register />} />
-              <Route path="verify-email/:token" element={<VerifyEmail />} />
+              <Route path="verify-email/:token" element={<VerifyEmail />} /><Route path="confirm-email/:token" element={<ConfirmEmail />} />
               <Route path="forgot-password" element={<ForgotPassword />} /><Route path="reset-password/:token" element={<ResetPassword />} />
               <Route path="explore" element={<Explore />} /><Route path="map" element={<Explore initialView="map" />} />
               <Route path="trips/new" element={<P><TripForm /></P>} />

@@ -89,6 +89,21 @@ export function VerifyEmail() {
   );
 }
 
+export function ConfirmEmail() {
+  const { token } = useParams(); const { logout } = useAuth(); const [state, setState] = useState('loading'); const [msg, setMsg] = useState(''); const ran = useRef(false);
+  useEffect(() => {
+    if (ran.current) return; ran.current = true;
+    api.post('/auth/confirm-email-change', { token }).then(() => { setState('ok'); logout(); }).catch((e) => { setState('err'); setMsg(errMsg(e)); });
+  }, [token]); // eslint-disable-line
+  return (
+    <Shell title="Confirm new email" sub={state === 'loading' ? 'Confirming…' : ''}>
+      {state === 'ok' && <p className="rounded-xl bg-ok/10 p-4 text-sm" role="status">Your email was updated. For your security you have been signed out. Please log in with your new email.</p>}
+      {state === 'err' && <p className="rounded-xl bg-danger/10 p-4 text-sm text-danger" role="alert">{msg}</p>}
+      <p className="mt-4 text-center text-sm"><Link to="/login" className="text-brand">Go to login</Link></p>
+    </Shell>
+  );
+}
+
 export function ForgotPassword() {
   const [sent, setSent] = useState(false); const [err, setErr] = useState('');
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(z.object({ email: z.string().email('Enter a valid email') })) });

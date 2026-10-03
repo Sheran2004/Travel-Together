@@ -27,6 +27,7 @@
     "nodemailer": "^10.0.12",
     "socket.io": "^4.8.4",
     "travel-together": "file:..",
+    "web-push": "^3.6.7",
     "zod": "^4.6.5"
   }
 }

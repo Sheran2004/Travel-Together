@@ -63,6 +63,17 @@ r.post('/resend-verification', protect, wrap(async (req, res) => {
   await issueVerification(req.user);
   res.json({ success: true, message: 'Verification email sent' });
 }));
+r.post('/confirm-email-change', wrap(async (req, res) => {
+  const { token } = z.object({ token: z.string().min(20) }).parse(req.body);
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  const user = await User.findOne({ emailChangeHash: hash, emailChangeExpires: { $gt: new Date() } }).select('+emailChangeHash +emailChangeExpires');
+  if (!user || !user.pendingEmail) throw new AppError('This confirmation link is invalid or has expired', 400);
+  if (await User.exists({ email: user.pendingEmail, _id: { $ne: user._id } })) throw new AppError('That email is already in use', 409);
+  user.email = user.pendingEmail; user.pendingEmail = undefined; user.emailChangeHash = undefined; user.emailChangeExpires = undefined;
+  user.emailVerified = true; user.tokenVersion = (user.tokenVersion || 0) + 1; // signs out all sessions for safety
+  await user.save();
+  res.json({ success: true, message: 'Email updated. Please log in with your new email.' });
+}));
 r.get('/me', protect, (req, res) => res.json({ success: true, user: req.user }));
 
 // Stateless JWT: logout is handled client-side; this endpoint can invalidate all sessions on request

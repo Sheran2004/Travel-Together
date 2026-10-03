@@ -7,6 +7,8 @@ import { protect } from '../middleware/auth.js';
 import { AppError, wrap, sameId } from '../utils/helpers.js';
 import { notify } from '../services/notify.js';
 import { addMember } from '../services/trips.js';
+import { buildIceServers } from '../utils/turn.js';
+import { env } from '../config/env.js';
 
 /* ================= connections ================= */
 export const connections = Router();
@@ -107,6 +109,7 @@ reports.get('/mine', wrap(async (req, res) => {
 /* ================= calls (history) ================= */
 export const calls = Router();
 calls.use(protect);
+calls.get('/ice', wrap(async (req, res) => { res.json({ success: true, ...buildIceServers(env, req.user._id) }); }));
 calls.get('/', wrap(async (req, res) => {
   const items = await Call.find({ $or: [{ caller: req.user._id }, { receiver: req.user._id }] }).sort('-createdAt').limit(50).populate('caller receiver', 'name username profileImage');
   res.json({ success: true, calls: items });

@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { AppError, sameId } from '../utils/helpers.js';
 import { emitToUser, isOnline } from './realtime.js';
 import { Notification } from '../models/misc.js';
+import { pushToUser } from './push.js';
 import { emitToUser as emit } from './realtime.js';
 
 export const MSG_POPULATE = [
@@ -78,8 +79,10 @@ export async function createMessage({ conversationId, senderId, type = 'text', t
     if (r.restricted.some(x => sameId(x, senderId))) continue;
     if (r.blocked.some(x => sameId(x, senderId))) continue;
     const link = `/messages/${conv._id}`;
+    const pushTitle = conv.type === 'group' ? 'New group message' : `New message from ${sender.name}`;
     const preview = type === 'text' ? out.text.slice(0, 80) : type === 'voice' ? '🎤 Voice message' : type === 'image' ? '📷 Photo' : type === 'invite' ? 'Sent a trip invitation' : '📎 File';
     const existing = await Notification.findOneAndUpdate({ user: r._id, type: conv.type === 'group' ? 'group_message' : 'message', actor: senderId, link, read: false }, { body: preview, updatedAt: new Date() }, { new: true });
+    pushToUser(r._id, { title: pushTitle, body: preview, url: link }).catch(() => {});
     if (existing) { await existing.populate('actor', 'name username profileImage'); emit(r._id, 'notification:new', existing); }
     else {
       const n = await Notification.create({ user: r._id, actor: senderId, type: conv.type === 'group' ? 'group_message' : 'message', title: conv.type === 'group' ? 'New group message' : `New message from ${sender.name}`, body: preview, link });

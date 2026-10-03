@@ -9,7 +9,9 @@ import { AppError, wrap, escapeRegex, paginate, sameId } from '../utils/helpers.
 import { compatibility } from '../utils/matching.js';
 import { passwordRule } from './auth.js';
 import { isOnline } from '../services/realtime.js';
-import bcryptjs from 'bcryptjs';
+import crypto from 'crypto';
+import { sendMail } from '../services/mail.js';
+import { env } from '../config/env.js';
 
 const r = Router();
 const PUBLIC = 'name username profileImage bio age city country languages travelInterests travelStyle budgetMin budgetMax favoriteDestinations createdAt privacySettings lastSeen role';
@@ -51,6 +53,23 @@ r.put('/password', protect, wrap(async (req, res) => {
   res.json({ success: true, message: 'Password changed' });
 }));
 
+r.post('/email-change', protect, wrap(async (req, res) => {
+  const { newEmail, password } = z.object({ newEmail: z.string().trim().toLowerCase().email('Enter a valid email'), password: z.string().min(1, 'Enter your password') }).parse(req.body);
+  const u = await User.findById(req.user._id).select('+password');
+  if (!(await bcrypt.compare(password, u.password))) throw new AppError('Password is incorrect', 400);
+  if (newEmail === u.email) throw new AppError('That is already your email', 400);
+  if (await User.exists({ email: newEmail })) throw new AppError('That email is already in use', 409);
+  const token = crypto.randomBytes(32).toString('hex');
+  u.pendingEmail = newEmail; u.emailChangeHash = crypto.createHash('sha256').update(token).digest('hex'); u.emailChangeExpires = new Date(Date.now() + 60 * 60 * 1000);
+  await u.save();
+  await sendMail({ to: newEmail, subject: 'Confirm your new Travel Together email', text: `Confirm this as your new email (valid 1 hour):\n${env.CLIENT_URL[0]}/confirm-email/${token}\n\nIf you did not request this, ignore this message.` });
+  sendMail({ to: u.email, subject: 'Email change requested on your Travel Together account', text: `A change of your account email to ${newEmail} was requested. If this was not you, change your password immediately.` }).catch(() => {});
+  res.json({ success: true, message: `Confirmation link sent to ${newEmail}`, user: u });
+}));
+r.delete('/email-change', protect, wrap(async (req, res) => {
+  await User.updateOne({ _id: req.user._id }, { $unset: { pendingEmail: 1, emailChangeHash: 1, emailChangeExpires: 1 } });
+  res.json({ success: true });
+}));
 r.delete('/me', protect, wrap(async (req, res) => {
   const { password } = z.object({ password: z.string().min(1) }).parse(req.body);
   const u = await User.findById(req.user._id).select('+password');
